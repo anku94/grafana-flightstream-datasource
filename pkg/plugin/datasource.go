@@ -201,15 +201,10 @@ func (d *Datasource) PublishStream(ctx context.Context, req *backend.PublishStre
 func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamRequest, sender *backend.StreamSender) error {
 	log.DefaultLogger.Info("RunStream for path: " + req.Path)
 
-	// path_parts := strings.Split(req.Path, "/")
-
-	// if len(path_parts) != 4 {
-	// 	return fmt.Errorf("invalid path: %s", req.Path)
-	// }
-
-	// flight_name := path_parts[3]
-	// log.DefaultLogger.Info("flight_name: " + flight_name)
 	flight_name := req.Path
+
+	retry_interval := 1 * time.Second
+	poll_interval := 1 * time.Second
 
 	for {
 		select {
@@ -218,6 +213,14 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 		default:
 			log.DefaultLogger.Info("trying fetch flight_name: " + flight_name)
 			frame, err := d.fsc.GetStreamData(ctx, flight_name)
+
+			if err != nil || frame == nil {
+				logInfof("Got nil frame for flight_name: %s, retrying backend connection", flight_name)
+				d.fsc.InvalidateTicket(flight_name)
+				time.Sleep(retry_interval)
+				continue
+			}
+
 			log.DefaultLogger.Info("fetched flight_name: " + flight_name + "row count: " + strconv.Itoa(frame.Rows()))
 			if err != nil {
 				return err
@@ -229,7 +232,7 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 				}
 			}
 
-			time.Sleep(1 * time.Second)
+			time.Sleep(poll_interval)
 		}
 	}
 }
