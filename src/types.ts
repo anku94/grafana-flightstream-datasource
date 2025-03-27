@@ -1,16 +1,12 @@
 import { DataSourceJsonData } from '@grafana/data';
 import { DataQuery } from '@grafana/schema';
 
-export interface MyQuery extends DataQuery {
-  lowerLimit: number;
-  upperLimit: number;
-  tickInterval: number;
+export interface OrcaStreamQuery extends DataQuery {
+  stream: string;
 }
 
-export const DEFAULT_QUERY: Partial<MyQuery> = {
-  lowerLimit: 0,
-  upperLimit: 100,
-  tickInterval: 1000,
+export const DEFAULT_QUERY: Partial<OrcaStreamQuery> = {
+  stream: "orcastream",
 };
 
 export interface DataPoint {
@@ -22,11 +18,15 @@ export interface DataSourceResponse {
   datapoints: DataPoint[];
 }
 
+export interface StreamsResponse {
+  streams: string[];
+}
+
 /**
  * These are options configured for each DataSource instance
  */
-export interface MyDataSourceOptions extends DataSourceJsonData {
-  path?: string;
+export interface OrcaStreamOptions extends DataSourceJsonData {
+  server_url?: string;
 }
 
 /**

@@ -1,9 +1,9 @@
 import { DataSourcePlugin } from '@grafana/data';
-import { DataSource } from './datasource';
+import { OrcaStreamSource } from './datasource';
 import { ConfigEditor } from './components/ConfigEditor';
 import { QueryEditor } from './components/QueryEditor';
-import { MyQuery, MyDataSourceOptions } from './types';
+import { OrcaStreamQuery, OrcaStreamOptions } from './types';
 
-export const plugin = new DataSourcePlugin<DataSource, MyQuery, MyDataSourceOptions>(DataSource)
+export const plugin = new DataSourcePlugin<OrcaStreamSource, OrcaStreamQuery, OrcaStreamOptions>(OrcaStreamSource)
   .setConfigEditor(ConfigEditor)
   .setQueryEditor(QueryEditor);

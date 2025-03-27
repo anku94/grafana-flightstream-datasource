@@ -4,12 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"runtime/debug"
 	"strconv"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/resource/httpadapter"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/pdl/orcastream/pkg/models"
 )
@@ -27,13 +31,14 @@ var (
 )
 
 type DatasourceConfig struct {
-	Addr string `json:"addr"`
+	ServerURL string `json:"server_url"`
 }
 
 // Datasource is an example datasource which can respond to data queries, reports
 // its health and has streaming skills.
 type Datasource struct {
-	fsc *FlightStreamClient
+	fsc             *FlightStreamClient
+	resourceHandler backend.CallResourceHandler
 }
 
 // NewDatasource creates a new datasource instance.
@@ -45,7 +50,9 @@ func NewDatasource(ctx context.Context, instanceSettings backend.DataSourceInsta
 	}
 
 	// IP and port as string
-	ip_port := "host.docker.internal:8815" // temporarily hardcode
+	ip_port := cfg.ServerURL
+	logInfof("Trying to connect to FlightStreamServer at %s", ip_port)
+
 	fsc, err := NewFlightStreamClient(ip_port)
 	if err != nil {
 		return nil, err
@@ -55,7 +62,19 @@ func NewDatasource(ctx context.Context, instanceSettings backend.DataSourceInsta
 		fsc: fsc,
 	}
 
+	r := chi.NewRouter()
+	r.Use(recoverer)
+	r.Get("/streams", ds.GetStreams)
+
+	ds.resourceHandler = httpadapter.New(r)
+
 	return ds, nil
+}
+
+// CallResource forwards requests to an internal HTTP mux that handles custom
+// resources for the datasource.
+func (d *Datasource) CallResource(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
+	return d.resourceHandler.CallResource(ctx, req, sender)
 }
 
 // Dispose here tells plugin SDK that plugin wants to clean up resources when a new instance
@@ -213,4 +232,20 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 			time.Sleep(1 * time.Second)
 		}
 	}
+}
+
+func recoverer(next http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				if rec == http.ErrAbortHandler {
+					panic(rec)
+				}
+				logErrorf("Panic: %s %s", rec, string(debug.Stack()))
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	}
+	return http.HandlerFunc(fn)
 }
