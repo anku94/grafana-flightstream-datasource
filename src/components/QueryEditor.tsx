@@ -1,54 +1,65 @@
-import React from 'react';
-import { SelectableValue } from '@grafana/data';
-import { InlineField, InlineFieldRow, Select } from '@grafana/ui';
+import React, { useEffect, useState } from 'react';
+import { QueryEditorProps } from '@grafana/data';
+import { Combobox, ComboboxOption, InlineField, InlineFieldRow } from '@grafana/ui';
+import { OrcaStreamQuery, OrcaStreamOptions } from 'types';
+import { OrcaStreamSource } from '../datasource';
 
-// Mock data for live test channels
-const liveTestDataChannels = [
-  // {
-  //   label: 'random-2s-stream',
-  //   value: 'random-2s-stream',
-  //   description: 'Random stream with points every 2s',
-  // },
-  // {
-  //   label: 'random-flakey-stream',
-  //   value: 'random-flakey-stream',
-  //   description: 'Stream that returns data in random intervals',
-  // },
-  // {
-  //   label: 'random-labeled-stream',
-  //   value: 'random-labeled-stream',
-  //   description: 'Value with moving labels',
-  // },
-  // {
-  //   label: 'random-20Hz-stream',
-  //   value: 'random-20Hz-stream',
-  //   description: 'Random stream with points in 20Hz',
-  // },
-  {
-    label: 'orcastream',
-    value: 'orcastream',
-    description: 'Orcastream flight',
-  },
-];
+type StreamEntry = {
+  label: string;
+  value: string;
+  description: string;
+}
 
-export function QueryEditor() {
-  // Noop function: selection changes are ignored.
-  const noop = (_: SelectableValue<string>) => {};
+export function QueryEditor(props: QueryEditorProps<OrcaStreamSource, OrcaStreamQuery, OrcaStreamOptions>) {
+  const {onChange, query, datasource} = props
 
-  // Use a static default selection.
-  const selected = liveTestDataChannels[0];
+  // streams is an array of streamentries
+  const [streams, setStreams] = useState<StreamEntry[]>([]);
+
+  useEffect(() => {
+    datasource.getStreams().then((streams) => {
+      console.log("Setting streams:", streams);
+
+      // const stream_objs = streams.streams.map(s => {
+      //   return {
+      //     label: s,
+      //     value: s,
+      //     description: s
+      //   }
+      // });
+
+      // console.log("Stream objs:", stream_objs);
+
+      setStreams(streams.streams.map(s => {
+        return {
+          label: s,
+          value: s,
+          description: s
+        }
+      }));
+    });
+  }, [datasource]);
+
+  const active_stream = streams.find(s => s.value === query.stream) ?? null;
+
+  const onStreamChange = (option: ComboboxOption<string>) => {
+    console.log("onStreamChange: ", option);
+    onChange({ ...query, stream: option.value });
+  }
 
   return (
+    <>
     <InlineFieldRow>
-      <InlineField label="Channel" labelWidth={14}>
-        <Select
-          width={32}
-          onChange={noop}
-          placeholder="Select channel"
-          options={liveTestDataChannels}
-          value={selected}
+      <InlineField label="Stream" labelWidth={14}>
+        <Combobox 
+        options={streams}
+        width={32}
+        value={active_stream}
+        placeholder="Select stream"
+        onChange={onStreamChange}
         />
       </InlineField>
     </InlineFieldRow>
+    </>
   );
 }

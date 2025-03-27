@@ -114,24 +114,16 @@ func (c *FlightStreamClient) GetFlightTicket(ctx context.Context, flight_name st
 		return nil, err
 	}
 
-	log.DefaultLogger.Info("GetFlightTicket for flight_name: " + flight_name + " found in cache")
-
 	if len(info.Endpoint) == 0 {
 		log.DefaultLogger.Error("GetFlightTicket for flight_name: " + flight_name + " no endpoints found")
 		return nil, fmt.Errorf("no endpoints found for flight %s", flight_name)
 	}
 
-	log.DefaultLogger.Info("GetFlightTicket for flight_name: " + flight_name + " found endpoints")
-
 	tkt := info.Endpoint[0].Ticket
-
-	log.DefaultLogger.Info("GetFlightTicket for flight_name: " + flight_name + " found ticket")
 
 	c.mu.Lock()
 	c.tickets[flight_name] = tkt
 	c.mu.Unlock()
-
-	log.DefaultLogger.Info("GetFlightTicket for flight_name: " + flight_name + " cached ticket")
 
 	return tkt, nil
 }
@@ -157,5 +149,15 @@ func (c *FlightStreamClient) GetStreamData(ctx context.Context, flight_name stri
 		return nil, err
 	}
 
+	if frame == nil {
+		return nil, fmt.Errorf("no data found for flight %s", flight_name)
+	}
+
 	return frame, nil
+}
+
+func (c *FlightStreamClient) InvalidateTicket(flight_name string) {
+	c.mu.Lock()
+	delete(c.tickets, flight_name)
+	c.mu.Unlock()
 }

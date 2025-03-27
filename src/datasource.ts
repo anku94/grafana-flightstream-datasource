@@ -1,14 +1,14 @@
 import { DataSourceInstanceSettings, CoreApp, DataQueryRequest, DataQueryResponse, LiveChannelScope } from '@grafana/data';
 import { DataSourceWithBackend, getGrafanaLiveSrv } from '@grafana/runtime';
 import { Observable, merge } from 'rxjs';
-import { MyQuery, MyDataSourceOptions, DEFAULT_QUERY } from './types';
+import { OrcaStreamQuery, OrcaStreamOptions, DEFAULT_QUERY, StreamsResponse } from './types';
 
-export class DataSource extends DataSourceWithBackend<MyQuery, MyDataSourceOptions> {
-  constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
+export class OrcaStreamSource extends DataSourceWithBackend<OrcaStreamQuery, OrcaStreamOptions> {
+  constructor(instanceSettings: DataSourceInstanceSettings<OrcaStreamOptions>) {
     super(instanceSettings);
   }
 
-  getDefaultQuery(_: CoreApp): Partial<MyQuery> {
+  getDefaultQuery(_: CoreApp): Partial<OrcaStreamQuery> {
     return DEFAULT_QUERY;
   }
 
@@ -19,27 +19,28 @@ export class DataSource extends DataSourceWithBackend<MyQuery, MyDataSourceOptio
   //   };
   // }
 
-  // filterQuery(query: MyQuery): boolean {
-  //   // if no query has been provided, prevent the query from being executed
-  //   return !!query.queryText;
-  // }
+  filterQuery(query: OrcaStreamQuery): boolean {
+    // if no query has been provided, prevent the query from being executed
+    return !!query.stream;
+  }
 
-  query(request: DataQueryRequest<MyQuery>): Observable<DataQueryResponse> {
+  query(request: DataQueryRequest<OrcaStreamQuery>): Observable<DataQueryResponse> {
     const observables = request.targets.map((query, index) => {
+      console.log("Query: ", query);
 
       return getGrafanaLiveSrv().getDataStream({
         addr: {
           scope: LiveChannelScope.DataSource,
           namespace: this.uid,
-          // path: `my-ws/custom-${query.lowerLimit}-${query.upperLimit}-${query.tickInterval}`, // this will allow each new query to create a new connection
-          path: `orcastream`,
-          data: {
-            ...query,
-          },
+          path: query.stream,
         },
       });
     });
 
     return merge(...observables);
+  }
+
+  async getStreams(): Promise<StreamsResponse> {
+    return this.getResource("/streams");
   }
 }
