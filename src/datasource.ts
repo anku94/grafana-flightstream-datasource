@@ -1,4 +1,4 @@
-import { DataSourceInstanceSettings, CoreApp, DataQueryRequest, DataQueryResponse, LiveChannelScope } from '@grafana/data';
+import { DataSourceInstanceSettings, CoreApp, DataQueryRequest, DataQueryResponse, LiveChannelScope, StreamingFrameAction } from '@grafana/data';
 import { DataSourceWithBackend, getGrafanaLiveSrv } from '@grafana/runtime';
 import { Observable, merge } from 'rxjs';
 import { OrcaStreamQuery, OrcaStreamOptions, DEFAULT_QUERY, StreamsResponse } from './types';
@@ -34,6 +34,10 @@ export class OrcaStreamSource extends DataSourceWithBackend<OrcaStreamQuery, Orc
           namespace: this.uid,
           path: query.stream,
         },
+        buffer: {
+          maxLength: 8000,
+          action: StreamingFrameAction.Append,
+        }
       });
     });
 

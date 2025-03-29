@@ -204,7 +204,7 @@ func (d *Datasource) RunStream(ctx context.Context, req *backend.RunStreamReques
 	flight_name := req.Path
 
 	retry_interval := 1 * time.Second
-	poll_interval := 1 * time.Second
+	poll_interval := 100 * time.Millisecond
 
 	for {
 		select {
